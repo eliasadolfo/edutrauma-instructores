@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>EduTrauma Instructores — Portal del equipo docente</title>
+<meta name="theme-color" content="#00205C">
+<meta name="description" content="Portal privado para instructores EduTrauma: guías de ejecución y checklists de cada curso.">
+<meta name="robots" content="noindex, nofollow">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ET Instructores">
+
+<link rel="stylesheet" href="design/edutrauma-ui.css">
+<style>
+/* ===== Estilos propios del portal (solo lo que no existe en edutrauma-ui.css, tokens --et-*) ===== */
+.login-card{ background:var(--et-card); border:1px solid var(--et-line); border-radius:var(--et-r-lg, 18px); box-shadow:var(--et-shadow); padding:22px 18px; }
+.login-card h2{ margin:0 0 6px; font-size:1.05rem; color:var(--et-navy); }
+.login-card p{ margin:0 0 16px; font-size:0.88rem; color:var(--et-muted); line-height:1.45; }
+.field-label{ display:block; font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--et-muted); margin:0 0 6px; }
+.field-input{ width:100%; box-sizing:border-box; padding:13px 14px; font-size:1rem; font-family:inherit; border:1px solid var(--et-line); border-radius:12px; background:var(--et-bg); color:var(--et-text); margin-bottom:14px; }
+.field-input:focus{ outline:2px solid var(--et-info); border-color:transparent; }
+.login-error{ display:none; background:var(--et-danger-soft); border:1px solid var(--et-danger-line); color:var(--et-danger); border-radius:10px; padding:10px 12px; font-size:0.85rem; margin-bottom:14px; }
+.login-error.show{ display:block; }
+
+.hub-hello{ font-size:0.9rem; color:var(--et-muted); margin:0 0 14px; }
+.hub-hello b{ color:var(--et-navy); }
+
+.session-row{ display:flex; gap:10px; justify-content:center; margin:18px 0 4px; flex-wrap:wrap; }
+.session-link{ background:none; border:none; font-family:inherit; font-size:0.85rem; color:var(--et-info); padding:8px 10px; cursor:pointer; }
+.session-link:active{ opacity:0.55; }
+
+.curso-head{ display:flex; align-items:center; gap:12px; margin:0 0 4px; }
+.curso-head .tool-chip{ flex-shrink:0; }
+
+.seccion-card{ background:var(--et-card); border:1px solid var(--et-line); border-radius:18px; box-shadow:var(--et-shadow); padding:18px 16px; margin-bottom:14px; }
+.seccion-card h2{ margin:0 0 4px; font-size:1rem; color:var(--et-navy); }
+.seccion-sub{ margin:0 0 12px; font-size:0.78rem; color:var(--et-muted); }
+
+.guia-item{ border-top:1px solid var(--et-line); padding:12px 0; }
+.guia-item:first-of-type{ border-top:none; padding-top:4px; }
+.guia-item h3{ margin:0 0 4px; font-size:0.92rem; color:var(--et-navy); }
+.guia-item p{ margin:0; font-size:0.88rem; line-height:1.5; color:var(--et-text); white-space:pre-line; }
+
+.check-item{ display:flex; align-items:flex-start; gap:12px; width:100%; box-sizing:border-box; background:none; border:none; border-top:1px solid var(--et-line); padding:13px 2px; font-family:inherit; text-align:left; cursor:pointer; }
+.check-item:first-of-type{ border-top:none; }
+.check-item:active{ background:#f2f5fb; }
+.check-box{ width:24px; height:24px; flex-shrink:0; border:2px solid var(--et-muted); border-radius:8px; margin-top:1px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.9rem; transition:background 0.15s, border-color 0.15s; }
+.check-item.done .check-box{ background:var(--et-success); border-color:var(--et-success); }
+.check-text{ font-size:0.92rem; line-height:1.4; color:var(--et-text); }
+.check-item.done .check-text{ color:var(--et-muted); text-decoration:line-through; }
+.check-detalle{ display:block; font-size:0.78rem; color:var(--et-muted); margin-top:2px; text-decoration:none; }
+
+.mini-progress{ height:6px; background:var(--et-bg-2); border-radius:999px; overflow:hidden; margin:0 0 12px; }
+.mini-progress i{ display:block; height:100%; background:linear-gradient(90deg, var(--et-navy), var(--et-success)); border-radius:999px; transition:width 0.25s; }
+
+.reset-check{ background:none; border:none; font-family:inherit; font-size:0.8rem; color:var(--et-info); padding:8px 0 0; cursor:pointer; }
+
+.admin-list{ margin:0 0 6px; }
+.admin-row{ border-top:1px solid var(--et-line); padding:12px 0; }
+.admin-row:first-child{ border-top:none; }
+.admin-row-name{ font-size:0.95rem; font-weight:700; color:var(--et-navy); }
+.admin-row-mail{ font-size:0.8rem; color:var(--et-muted); word-break:break-all; }
+.admin-cursos{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 6px; }
+.curso-toggle{ font-family:inherit; font-size:0.8rem; padding:7px 12px; border-radius:999px; border:1px solid var(--et-line); background:var(--et-bg); color:var(--et-muted); cursor:pointer; }
+.curso-toggle.on{ background:var(--et-navy); border-color:var(--et-navy); color:#fff; }
+.admin-actions{ display:flex; gap:12px; flex-wrap:wrap; }
+.admin-mini{ background:none; border:none; font-family:inherit; font-size:0.8rem; color:var(--et-info); padding:6px 0; cursor:pointer; }
+.admin-mini.danger{ color:var(--et-danger); }
+
+.loading-note{ text-align:center; color:var(--et-muted); font-size:0.85rem; padding:30px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="brand-strip">
+    <img src="logo-blanco-trim.png" alt="EduTrauma" class="brand-logo">
+    <span class="brand-chip" id="brandChip" style="display:none"><img id="brandChipImg" src="" alt=""></span>
+  </div>
+  <div class="brand-ribbon">Portal de Instructores</div>
+
+  <header id="pageHeader">
+    <h1 id="pageTitle">Portal de Instructores</h1>
+    <p id="pageSubtitle">Guías de ejecución y checklists de cada curso EduTrauma. Acceso exclusivo del equipo docente.</p>
+  </header>
+
+  <main id="main"><div class="loading-note">Cargando…</div></main>
+
+  <footer>Material interno del equipo docente EduTrauma — no distribuir.<br>EduTrauma® — Enseñando a salvar vidas.<br><span style="opacity:0.75">© 2026 EduTrauma® · Todos los derechos reservados.</span></footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* ============ Supabase ============ */
+const SB_URL = 'https://zbvxigtajjvakakbhalo.supabase.co';
+const SB_KEY = 'sb_publishable_h7hZmNCMB0RpNfmIM0vltw_RF-4Kq-x';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+/* ============ Estado ============ */
+let PERFIL = null;        // {id, nombre, rol}
+let CURSOS = [];          // cursos visibles
+let SECCIONES = {};       // curso_id -> [secciones]
+let PROGRESO = new Set(); // "seccion_id|item_id"
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ============ Overlay / sheet ============ */
+function openSheet(html){ $('sheet').innerHTML = html; $('overlay').classList.add('show'); }
+function closeSheet(){ $('overlay').classList.remove('show'); }
+$('overlay').addEventListener('click', (e) => { if (e.target === $('overlay')) closeSheet(); });
+
+function setChip(curso){
+  if (curso && curso.logo){
+    $('brandChipImg').src = curso.logo;
+    $('brandChipImg').alt = curso.nombre;
+    $('brandChip').style.display = '';
+  } else {
+    $('brandChip').style.display = 'none';
+  }
+}
+
+/* ============ Login ============ */
+function renderLogin(msg){
+  setChip(null);
+  $('pageTitle').textContent = 'Portal de Instructores';
+  $('pageSubtitle').textContent = 'Guías de ejecución y checklists de cada curso EduTrauma. Acceso exclusivo del equipo docente.';
+  $('main').innerHTML = `
+    <div class="login-card">
+      <h2>Iniciar sesión</h2>
+      <p>Ingresa con el correo y la clave que te entregó el equipo EduTrauma.</p>
+      <div class="login-error${msg ? ' show' : ''}" id="loginError">${esc(msg || '')}</div>
+      <label class="field-label" for="email">Correo</label>
+      <input class="field-input" id="email" type="email" autocomplete="username" placeholder="tu@correo.cl">
+      <label class="field-label" for="clave">Clave</label>
+      <input class="field-input" id="clave" type="password" autocomplete="current-password" placeholder="••••••••">
+      <button class="restart-btn" id="btnLogin" onclick="doLogin()">Entrar ›</button>
+    </div>`;
+  $('clave').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+}
+
+async function doLogin(){
+  const email = $('email').value.trim(), clave = $('clave').value;
+  if (!email || !clave){ showLoginError('Escribe tu correo y tu clave.'); return; }
+  $('btnLogin').disabled = true; $('btnLogin').textContent = 'Entrando…';
+  const { error } = await sb.auth.signInWithPassword({ email, password: clave });
+  if (error){
+    $('btnLogin').disabled = false; $('btnLogin').textContent = 'Entrar ›';
+    showLoginError(error.message.includes('Invalid login') ? 'Correo o clave incorrectos.' : 'No se pudo iniciar sesión. Revisa tu conexión.');
+    return;
+  }
+  boot();
+}
+function showLoginError(msg){ const el = $('loginError'); el.textContent = msg; el.classList.add('show'); }
+
+/* ============ Carga de datos ============ */
+async function loadData(){
+  const uid = (await sb.auth.getUser()).data.user.id;
+  const [{ data: perfil }, { data: cursos }, { data: secciones }, { data: prog }] = await Promise.all([
+    sb.from('perfiles').select('id, nombre, rol').eq('id', uid).single(),
+    sb.from('cursos').select('*').order('orden'),
+    sb.from('secciones').select('*').order('orden'),
+    sb.from('progreso').select('seccion_id, item_id'),
+  ]);
+  PERFIL = perfil;
+  CURSOS = cursos || [];
+  SECCIONES = {};
+  (secciones || []).forEach(s => { (SECCIONES[s.curso_id] = SECCIONES[s.curso_id] || []).push(s); });
+  PROGRESO = new Set((prog || []).map(p => p.seccion_id + '|' + p.item_id));
+}
+
+/* ============ Hub ============ */
+function renderHub(){
+  setChip(null);
+  $('pageTitle').textContent = 'Portal de Instructores';
+  $('pageSubtitle').textContent = 'Elige un curso para ver su guía de ejecución y checklists.';
+  const cards = CURSOS.map(c => `
+    <a class="tool-card" href="#" onclick="openCurso('${esc(c.id)}'); return false;">
+      <div class="tool-card-top">
+        <span class="tool-chip"><img src="${esc(c.logo)}" alt="${esc(c.nombre)}"></span>
+        <span class="tool-status">Asignado</span>
+      </div>
+      <div class="tool-title">${esc(c.nombre)}</div>
+      <p class="tool-desc">${esc(c.descripcion)}</p>
+      <span class="tool-cta">Abrir ›</span>
+    </a>`).join('');
+  const vacio = `<div class="tool-card soon"><div class="tool-title">Aún no tienes cursos asignados</div><p class="tool-desc">Pide al equipo EduTrauma que te asigne tu curso.</p></div>`;
+  const adminCard = PERFIL.rol === 'admin' ? `
+    <a class="tool-card" href="#" onclick="openAdmin(); return false;">
+      <div class="tool-card-top">
+        <span class="tool-chip" style="border:none;background:none;padding:0;font-size:1.4rem;">👥</span>
+        <span class="tool-status">Admin</span>
+      </div>
+      <div class="tool-title">Instructores</div>
+      <p class="tool-desc">Crear cuentas, asignar cursos y resetear claves del equipo docente.</p>
+      <span class="tool-cta">Administrar ›</span>
+    </a>` : '';
+  $('main').innerHTML = `
+    <p class="hub-hello">Hola, <b>${esc(PERFIL.nombre)}</b> ${PERFIL.rol === 'admin' ? '· administración' : ''}</p>
+    <div class="tool-grid">${cards || (adminCard ? '' : vacio)}${adminCard}</div>
+    <div class="session-row">
+      <button class="session-link" onclick="sheetClave()">Cambiar mi clave</button>
+      <button class="session-link" onclick="doLogout()">Cerrar sesión</button>
+    </div>`;
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  PERFIL = null; renderLogin();
+}
+
+/* ============ Curso ============ */
+function openCurso(id){
+  const curso = CURSOS.find(c => c.id === id);
+  if (!curso) return;
+  setChip(curso);
+  $('pageTitle').textContent = curso.nombre;
+  $('pageSubtitle').textContent = 'Guía del instructor y checklists de ejecución.';
+  const secs = SECCIONES[id] || [];
+  const html = secs.map(s => s.tipo === 'guia' ? renderGuia(s) : renderChecklist(s)).join('');
+  $('main').innerHTML = `
+    <div class="back-row"><button class="back-btn" onclick="renderHub()">‹ Volver a mis cursos</button></div>
+    ${html || '<div class="loading-note">Este curso aún no tiene contenido cargado.</div>'}`;
+}
+
+function renderGuia(s){
+  const items = (s.contenido || []).map(it => `
+    <div class="guia-item"><h3>${esc(it.titulo)}</h3><p>${esc(it.texto)}</p></div>`).join('');
+  return `<div class="seccion-card"><h2>${esc(s.titulo)}</h2><p class="seccion-sub">Guía de referencia</p>${items}</div>`;
+}
+
+function renderChecklist(s){
+  const items = s.contenido || [];
+  const done = items.filter(it => PROGRESO.has(s.id + '|' + it.id)).length;
+  const pct = items.length ? Math.round(done / items.length * 100) : 0;
+  const rows = items.map(it => {
+    const isDone = PROGRESO.has(s.id + '|' + it.id);
+    return `
+      <button class="check-item${isDone ? ' done' : ''}" id="chk-${esc(s.id)}-${esc(it.id)}" onclick="toggleItem('${esc(s.id)}','${esc(it.id)}','${esc(s.curso_id)}')">
+        <span class="check-box">${isDone ? '✓' : ''}</span>
+        <span class="check-text">${esc(it.texto)}${it.detalle ? `<span class="check-detalle">${esc(it.detalle)}</span>` : ''}</span>
+      </button>`;
+  }).join('');
+  return `
+    <div class="seccion-card" id="sec-${esc(s.id)}">
+      <h2>${esc(s.titulo)}</h2>
+      <p class="seccion-sub" id="secsub-${esc(s.id)}">${done} de ${items.length} completados</p>
+      <div class="mini-progress"><i id="secbar-${esc(s.id)}" style="width:${pct}%"></i></div>
+      ${rows}
+      <button class="reset-check" onclick="resetChecklist('${esc(s.id)}','${esc(s.curso_id)}')">↺ Reiniciar este checklist</button>
+    </div>`;
+}
+
+async function toggleItem(secId, itemId, cursoId){
+  const key = secId + '|' + itemId;
+  const el = $(`chk-${secId}-${itemId}`);
+  const marcar = !PROGRESO.has(key);
+  // Optimista
+  if (marcar) PROGRESO.add(key); else PROGRESO.delete(key);
+  el.classList.toggle('done', marcar);
+  el.querySelector('.check-box').textContent = marcar ? '✓' : '';
+  refreshChecklistHeader(secId, cursoId);
+  const res = marcar
+    ? await sb.from('progreso').insert({ instructor_id: PERFIL.id, seccion_id: secId, item_id: itemId })
+    : await sb.from('progreso').delete().eq('instructor_id', PERFIL.id).eq('seccion_id', secId).eq('item_id', itemId);
+  if (res.error){ // revertir
+    if (marcar) PROGRESO.delete(key); else PROGRESO.add(key);
+    el.classList.toggle('done', !marcar);
+    el.querySelector('.check-box').textContent = !marcar ? '✓' : '';
+    refreshChecklistHeader(secId, cursoId);
+  }
+}
+
+function refreshChecklistHeader(secId, cursoId){
+  const s = (SECCIONES[cursoId] || []).find(x => x.id === secId);
+  if (!s) return;
+  const items = s.contenido || [];
+  const done = items.filter(it => PROGRESO.has(secId + '|' + it.id)).length;
+  const pct = items.length ? Math.round(done / items.length * 100) : 0;
+  $('secsub-' + secId).textContent = `${done} de ${items.length} completados`;
+  $('secbar-' + secId).style.width = pct + '%';
+}
+
+async function resetChecklist(secId, cursoId){
+  const { error } = await sb.from('progreso').delete().eq('instructor_id', PERFIL.id).eq('seccion_id', secId);
+  if (error) return;
+  const s = (SECCIONES[cursoId] || []).find(x => x.id === secId);
+  (s?.contenido || []).forEach(it => PROGRESO.delete(secId + '|' + it.id));
+  openCurso(cursoId);
+}
+
+/* ============ Cambiar clave propia ============ */
+function sheetClave(){
+  openSheet(`
+    <h2>Cambiar mi clave</h2>
+    <label class="field-label" for="nueva1">Nueva clave (mínimo 8 caracteres)</label>
+    <input class="field-input" id="nueva1" type="password" autocomplete="new-password">
+    <label class="field-label" for="nueva2">Repite la nueva clave</label>
+    <input class="field-input" id="nueva2" type="password" autocomplete="new-password">
+    <div class="login-error" id="claveError"></div>
+    <button class="restart-btn" id="btnClave" onclick="doCambiarClave()">Guardar nueva clave</button>
+    <button class="close-sheet" onclick="closeSheet()">Cancelar</button>`);
+}
+
+async function doCambiarClave(){
+  const a = $('nueva1').value, b = $('nueva2').value, err = $('claveError');
+  err.classList.remove('show');
+  if (a.length < 8){ err.textContent = 'La clave debe tener al menos 8 caracteres.'; err.classList.add('show'); return; }
+  if (a !== b){ err.textContent = 'Las claves no coinciden.'; err.classList.add('show'); return; }
+  $('btnClave').disabled = true; $('btnClave').textContent = 'Guardando…';
+  const { error } = await sb.auth.updateUser({ password: a });
+  if (error){
+    $('btnClave').disabled = false; $('btnClave').textContent = 'Guardar nueva clave';
+    err.textContent = 'No se pudo cambiar la clave: ' + error.message; err.classList.add('show');
+    return;
+  }
+  closeSheet();
+}
+
+/* ============ Administración (solo admin) ============ */
+async function adminCall(payload){
+  const token = (await sb.auth.getSession()).data.session?.access_token;
+  const r = await fetch(SB_URL + '/functions/v1/admin-instructores', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SB_KEY },
+    body: JSON.stringify(payload),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Error del servidor');
+  return j;
+}
+
+async function openAdmin(){
+  setChip(null);
+  $('pageTitle').textContent = 'Instructores';
+  $('pageSubtitle').textContent = 'Crea cuentas, asigna cursos y gestiona claves del equipo docente.';
+  $('main').innerHTML = `
+    <div class="back-row"><button class="back-btn" onclick="renderHub()">‹ Volver</button></div>
+    <div class="loading-note">Cargando instructores…</div>`;
+  try{
+    const { instructores } = await adminCall({ accion: 'listar' });
+    renderAdmin(instructores);
+  }catch(e){
+    $('main').innerHTML = `
+      <div class="back-row"><button class="back-btn" onclick="renderHub()">‹ Volver</button></div>
+      <div class="login-error show">No se pudo cargar: ${esc(e.message)}</div>`;
+  }
+}
+
+function cursoTogglesHTML(prefix, seleccionados){
+  return CURSOS.map(c => `
+    <button type="button" class="curso-toggle${seleccionados.includes(c.id) ? ' on' : ''}" data-curso="${esc(c.id)}"
+      onclick="this.classList.toggle('on')">${esc(c.id.toUpperCase())}</button>`).join('');
+}
+
+function renderAdmin(list){
+  const rows = list.map(p => `
+    <div class="admin-row" data-id="${esc(p.id)}">
+      <div class="admin-row-name">${esc(p.nombre)} ${p.rol === 'admin' ? '· admin' : ''}</div>
+      <div class="admin-row-mail">${esc(p.email)}</div>
+      ${p.rol === 'admin' ? '' : `
+      <div class="admin-cursos" id="cursos-${esc(p.id)}">${cursoTogglesHTML(p.id, p.cursos)}</div>
+      <div class="admin-actions">
+        <button class="admin-mini" onclick="guardarCursos('${esc(p.id)}')">Guardar cursos</button>
+        <button class="admin-mini" onclick="sheetResetClave('${esc(p.id)}', '${esc(p.nombre)}')">Resetear clave</button>
+        <button class="admin-mini danger" onclick="sheetEliminar('${esc(p.id)}', '${esc(p.nombre)}')">Eliminar</button>
+      </div>`}
+    </div>`).join('');
+  $('main').innerHTML = `
+    <div class="back-row"><button class="back-btn" onclick="renderHub()">‹ Volver</button></div>
+    <div class="seccion-card">
+      <h2>Equipo actual</h2>
+      <p class="seccion-sub">${list.length} cuenta(s)</p>
+      <div class="admin-list">${rows}</div>
+    </div>
+    <div class="seccion-card">
+      <h2>Nuevo instructor</h2>
+      <p class="seccion-sub">La clave es temporal: el instructor puede cambiarla al entrar.</p>
+      <label class="field-label" for="nuNombre">Nombre</label>
+      <input class="field-input" id="nuNombre" type="text" placeholder="Dra. Nombre Apellido">
+      <label class="field-label" for="nuEmail">Correo</label>
+      <input class="field-input" id="nuEmail" type="email" placeholder="correo@ejemplo.cl">
+      <label class="field-label" for="nuClave">Clave temporal (mínimo 8 caracteres)</label>
+      <input class="field-input" id="nuClave" type="text" autocomplete="off">
+      <label class="field-label">Cursos asignados</label>
+      <div class="admin-cursos" id="nuCursos">${cursoTogglesHTML('nuevo', [])}</div>
+      <div class="login-error" id="nuError"></div>
+      <button class="restart-btn" id="btnCrear" onclick="crearInstructor()">Crear cuenta ›</button>
+    </div>`;
+}
+
+function cursosSeleccionados(containerId){
+  return [...document.querySelectorAll(`#${containerId} .curso-toggle.on`)].map(b => b.dataset.curso);
+}
+
+async function crearInstructor(){
+  const nombre = $('nuNombre').value.trim(), email = $('nuEmail').value.trim(), clave = $('nuClave').value;
+  const err = $('nuError'); err.classList.remove('show');
+  if (!nombre || !email || clave.length < 8){
+    err.textContent = 'Completa nombre, correo y una clave de al menos 8 caracteres.'; err.classList.add('show'); return;
+  }
+  $('btnCrear').disabled = true; $('btnCrear').textContent = 'Creando…';
+  try{
+    await adminCall({ accion: 'crear', nombre, email, clave, cursos: cursosSeleccionados('nuCursos') });
+    openAdmin();
+  }catch(e){
+    $('btnCrear').disabled = false; $('btnCrear').textContent = 'Crear cuenta ›';
+    err.textContent = e.message; err.classList.add('show');
+  }
+}
+
+async function guardarCursos(id){
+  try{
+    await adminCall({ accion: 'asignar', instructor_id: id, cursos: cursosSeleccionados('cursos-' + id) });
+    openAdmin();
+  }catch(e){ alert('No se pudo guardar: ' + e.message); }
+}
+
+function sheetResetClave(id, nombre){
+  openSheet(`
+    <h2>Resetear clave de ${esc(nombre)}</h2>
+    <label class="field-label" for="rsClave">Nueva clave temporal (mínimo 8 caracteres)</label>
+    <input class="field-input" id="rsClave" type="text" autocomplete="off">
+    <div class="login-error" id="rsError"></div>
+    <button class="restart-btn" onclick="doResetClave('${esc(id)}')">Resetear</button>
+    <button class="close-sheet" onclick="closeSheet()">Cancelar</button>`);
+}
+
+async function doResetClave(id){
+  const clave = $('rsClave').value, err = $('rsError');
+  err.classList.remove('show');
+  if (clave.length < 8){ err.textContent = 'Mínimo 8 caracteres.'; err.classList.add('show'); return; }
+  try{ await adminCall({ accion: 'resetear_clave', instructor_id: id, clave }); closeSheet(); }
+  catch(e){ err.textContent = e.message; err.classList.add('show'); }
+}
+
+function sheetEliminar(id, nombre){
+  openSheet(`
+    <h2>Eliminar a ${esc(nombre)}</h2>
+    <p style="font-size:0.88rem;color:var(--et-muted);line-height:1.5;margin:0 0 16px;">Se eliminará su cuenta, sus asignaciones y su progreso. Esta acción no se puede deshacer.</p>
+    <button class="restart-btn" style="background:var(--et-danger);" onclick="doEliminar('${esc(id)}')">Sí, eliminar</button>
+    <button class="close-sheet" onclick="closeSheet()">Cancelar</button>`);
+}
+
+async function doEliminar(id){
+  try{ await adminCall({ accion: 'eliminar', instructor_id: id }); closeSheet(); openAdmin(); }
+  catch(e){ alert('No se pudo eliminar: ' + e.message); }
+}
+
+/* ============ Arranque ============ */
+async function boot(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session){ renderLogin(); return; }
+  try{
+    await loadData();
+    renderHub();
+  }catch(e){
+    await sb.auth.signOut();
+    renderLogin('No se pudo cargar tu perfil. Intenta de nuevo.');
+  }
+}
+boot();
+
+/* ============ Service worker ============ */
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
