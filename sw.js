@@ -1,5 +1,5 @@
 /* EduTrauma Instructores — SW network-first (regla de la casa: nunca cache-first) */
-const CACHE = 'instructores-v1';
+const CACHE = 'instructores-v2';
 const ASSETS = [
   './',
   'index.html',
